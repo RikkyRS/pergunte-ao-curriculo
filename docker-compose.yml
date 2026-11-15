@@ -1,0 +1,19 @@
+# Banco local para desenvolvimento: PostgreSQL 17 já com a extensão pgvector.
+# Porta 5433 porque a 5432 já está ocupada pelo PostgreSQL 18 instalado no Windows (Limper).
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: curriculo-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: curriculo
+    ports:
+      - "5433:5432"
+    volumes:
+      - curriculo-data:/var/lib/postgresql/data
+      # Tudo que estiver em db/ roda automaticamente na 1ª vez que o banco sobe
+      - ./db:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  curriculo-data:
