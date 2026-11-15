@@ -49,5 +49,41 @@ docker exec -it curriculo-db psql -U postgres -d curriculo   # abre o terminal S
 
 ---
 
-## Parte 2: ingestão (próxima)
-Ler o currículo e os cases → cortar por seção → gerar embeddings → salvar na tabela `chunks`.
+## Parte 2: ingestão + teste da busca (15/11/2026) ✅
+
+### O que foi feito
+- `dados/curriculo.md`: versão **pública e limpa** do currículo (sem telefone, e-mail ou notas internas).
+- `scripts/ingerir.ts` (`npm run ingerir`): lê `dados/*.md` → corta por seção `##` → gera embeddings na Voyage → salva em `chunks`. Resultado: 12 pedaços, 1.561 tokens.
+- `scripts/buscar.ts` (`npm run buscar -- "pergunta"`): transforma a pergunta em vetor e mostra os 5 pedaços mais parecidos.
+
+### Decisões e porquês
+| Decisão | Por quê |
+|---|---|
+| Pasta `dados/` com currículo limpo, em vez de usar o `cv.md` do Coach Carter | Num RAG, **tudo que entra no banco pode sair na resposta**. O `cv.md` tinha "[CONFIRMAR]", divergências e link velho |
+| Markdown em vez de PDF | Markdown já tem as seções marcadas com `##`; PDF exigiria extrair texto e adivinhar onde começa cada seção |
+| Cabeçalho de contexto em cada pedaço (`nome + Seção: ...`) | Um pedaço solto "eliminou consultas N+1" não diz de quem nem de onde. Com o cabeçalho, o embedding carrega esse contexto |
+| `input_type: "document"` na ingestão e `"query"` na pergunta | O modelo da Voyage otimiza diferente "o que é procurado" e "o que procura"; isso melhora a busca |
+| `fetch` direto em vez de SDK da Voyage | É uma chamada só; menos dependência. O SDK só valeria se usássemos mais recursos |
+| Transação (`begin`/`commit`/`rollback`) + `delete` antes de inserir | Rodar 2x não duplica, e erro no meio não deixa o banco pela metade |
+| Node 24 rodando `.ts` direto | O Node 24 entende TypeScript sem compilar; menos ferramentas |
+
+### Resultado do teste
+| Pergunta | 1º lugar | similaridade |
+|---|---|---|
+| ele já otimizou banco de dados? | Experiência: Limper | 0.425 |
+| sabe trabalhar com IA? | Experiência: Carmillion | 0.613 |
+| onde ele estudou? | Formação | 0.413 |
+| ele sabe fazer bolo de chocolate? | Formação (errado, mas baixo) | 0.352 |
+
+**O que aprendi com isso:**
+- Nos 3 primeiros, o 1º lugar foi o certo, mesmo sem palavras iguais ("otimizou" não aparece no texto; "N+1" e "subqueries" sim).
+- Com embeddings reais, os números ficam entre ~0.3 e ~0.6, não perto de 1 como no exemplo da barba. **O que importa é a ordem e a distância entre o 1º e o resto**, não o valor absoluto.
+- A busca SEMPRE devolve 5 pedaços, mesmo quando nada tem a ver (bolo). Quem tem que dizer "não sei" é o Claude, na Parte 3, olhando os trechos. Dá pra somar um **limite mínimo de similaridade** depois, mas só calibrando com testes (evals).
+
+### Limite da conta grátis da Voyage
+Sem cartão cadastrado: **3 requisições por minuto**. A cota grátis (200 milhões de tokens nos modelos Voyage 3) vale de qualquer jeito. Pra demo com pouca gente, 3/min pode travar; cadastrar cartão sobe o limite e continua usando a cota grátis.
+
+---
+
+## Parte 3: resposta com o Claude (próxima)
+Pergunta → busca → monta o prompt com os trechos → Claude responde citando a fonte ou dizendo "não encontrei".
