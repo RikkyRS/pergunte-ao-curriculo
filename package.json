@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "ingerir": "node --env-file=.env scripts/ingerir.ts",
-    "buscar": "node --env-file=.env scripts/buscar.ts"
+    "buscar": "node --env-file=.env scripts/buscar.ts",
+    "perguntar": "node --env-file=.env scripts/perguntar.ts",
+    "web": "node --env-file=.env scripts/servidor.ts",
+    "avaliar": "node --env-file=.env scripts/avaliar.ts"
   },
   "dependencies": {
     "pg": "^8.23.1"

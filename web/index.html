@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pergunte ao currículo do Henrique</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --borda:#2a2f3a; --txt:#e8e8ea; --sub:#9aa0aa; --laranja:#ff7a1a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--txt); }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 20px; }
+  h1 { font-size: 1.8rem; margin: 0 0 6px; }
+  h1 span { color: var(--laranja); }
+  p.sub { color: var(--sub); margin: 0 0 28px; }
+  form { display:flex; gap:8px; }
+  input { flex:1; padding:14px; border-radius:10px; border:1px solid var(--borda); background:var(--card); color:var(--txt); font-size:1rem; }
+  button { padding:14px 20px; border:0; border-radius:10px; background:var(--laranja); color:#111; font-weight:700; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:wait; }
+  .sugestoes { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 28px; }
+  .sugestoes button { background:var(--card); color:var(--sub); border:1px solid var(--borda); font-weight:400; padding:8px 12px; font-size:.85rem; }
+  .card { background:var(--card); border:1px solid var(--borda); border-radius:12px; padding:20px; margin-bottom:16px; white-space:pre-wrap; line-height:1.5; }
+  .fontes h3 { margin:0 0 10px; font-size:.95rem; color:var(--sub); }
+  .fonte { display:flex; gap:10px; align-items:center; font-size:.85rem; color:var(--sub); margin:6px 0; }
+  .barra { height:6px; background:var(--laranja); border-radius:3px; }
+  .erro { color:#ff6b6b; }
+  footer { color:var(--sub); font-size:.8rem; margin-top:36px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pergunte ao currículo do <span>Henrique</span></h1>
+  <p class="sub">Um RAG: busca os trechos certos do currículo e uma IA responde citando a fonte.</p>
+
+  <form id="form">
+    <input id="pergunta" placeholder="Ex: ele já trabalhou com PostgreSQL?" maxlength="300" autocomplete="off" />
+    <button id="enviar">Perguntar</button>
+  </form>
+  <div class="sugestoes">
+    <button type="button">Ele já otimizou banco de dados?</button>
+    <button type="button">Tem experiência com IA?</button>
+    <button type="button">Quais projetos ele fez?</button>
+    <button type="button">Onde ele estudou?</button>
+  </div>
+
+  <div id="saida"></div>
+
+  <footer>Busca vetorial com pgvector · embeddings Voyage AI · resposta gerada por modelo local (Ollama)</footer>
+</main>
+<script>
+  const form = document.getElementById("form");
+  const campo = document.getElementById("pergunta");
+  const botao = document.getElementById("enviar");
+  const saida = document.getElementById("saida");
+
+  document.querySelectorAll(".sugestoes button").forEach(b =>
+    b.addEventListener("click", () => { campo.value = b.textContent; form.requestSubmit(); }));
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pergunta = campo.value.trim();
+    if (!pergunta) return;
+    botao.disabled = true;
+    saida.innerHTML = '<div class="card">Buscando no currículo e pensando... (o modelo local pode levar até 1 minuto)</div>';
+    try {
+      const r = await fetch("/api/perguntar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pergunta }),
+      });
+      const dados = await r.json();
+      if (dados.erro) throw new Error(dados.erro);
+      const card = document.createElement("div");
+      card.className = "card";
+      card.textContent = dados.resposta;
+      const fontes = document.createElement("div");
+      fontes.className = "card fontes";
+      fontes.innerHTML = "<h3>Trechos encontrados pela busca (similaridade)</h3>";
+      dados.trechos.forEach((t, i) => {
+        const linha = document.createElement("div");
+        linha.className = "fonte";
+        const barra = document.createElement("div");
+        barra.className = "barra";
+        barra.style.width = Math.round(t.similaridade * 160) + "px";
+        const txt = document.createElement("span");
+        txt.textContent = `[${i + 1}] ${t.similaridade.toFixed(3)} · ${t.secao}`;
+        linha.append(barra, txt);
+        fontes.append(linha);
+      });
+      const tempo = document.createElement("div");
+      tempo.className = "fonte";
+      tempo.textContent = `Respondido em ${dados.segundos.toFixed(1)}s`;
+      fontes.append(tempo);
+      saida.replaceChildren(card, fontes);
+    } catch (err) {
+      saida.innerHTML = "";
+      const c = document.createElement("div");
+      c.className = "card erro";
+      c.textContent = err.message;
+      saida.append(c);
+    } finally {
+      botao.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

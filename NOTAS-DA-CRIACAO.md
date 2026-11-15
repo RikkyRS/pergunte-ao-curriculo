@@ -87,3 +87,11 @@ Sem cartão cadastrado: **3 requisições por minuto**. A cota grátis (200 milh
 
 ## Parte 3: resposta com o Claude (próxima)
 Pergunta → busca → monta o prompt com os trechos → Claude responde citando a fonte ou dizendo "não encontrei".
+
+## Partes 3, 4 e 5: resposta, interface e evals (15/11/2026) ✅
+- `src/rag.ts`: as 3 funções do RAG. Geração com **Ollama local** (grátis); trocar pro Claude = mudar só `gerarResposta`.
+- `scripts/perguntar.ts` (terminal) e `scripts/servidor.ts` + `web/index.html` (web local, porta 3333).
+- `scripts/avaliar.ts`: evals da busca (10 casos) e da honestidade (2 casos).
+- **Problema:** `qwen2.5:3b` dizia "não encontrei" mesmo com o trecho certo. Ajustes de prompt não resolveram; `qwen2.5:7b` resolveu.
+- **Resultado:** busca 10/10 em 1º lugar; honestidade 2/2.
+- Resumo completo pra estudar: `RESUMO-PARA-ENTREVISTA.md`.
